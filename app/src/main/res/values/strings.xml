@@ -170,7 +170,7 @@
     <string name="friend_key_copy_hint">Copy and send this key to your trusted partner. It cannot be recovered once closed.</string>
     <string name="enter_credential_hint">Enter Recovery PIN or Friend Key</string>
     <string name="unlock_request_title">Request Maintenance Unlock</string>
-    <string name="unlock_request_desc">Enter your recovery credential. A %1$d-hour cooling-off waiting period will begin before maintenance mode opens. AI protection remains 100% active during the waiting period.</string>
+    <string name="unlock_request_desc">Enter your recovery credential. A %1$d-hour cooling-off waiting period will begin before maintenance mode opens. AI protection remains 100%% active during the waiting period.</string>
     <string name="invalid_credential_error">Invalid credential. Please try again.</string>
     <string name="cancel_unlock_confirm">Cancel the unlock request and keep the system locked?</string>
 </resources>
