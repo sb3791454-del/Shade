@@ -52,6 +52,7 @@ class ShadeAccessibilityService : AccessibilityService() {
 
     override fun onServiceConnected() {
         super.onServiceConnected()
+        instanceRef = java.lang.ref.WeakReference(this)
         Log.d(TAG, "Accessibility service connected")
         initializeOverlay()
     }
@@ -67,6 +68,11 @@ class ShadeAccessibilityService : AccessibilityService() {
         if (packageName == lastPackageName) return
 
         lastPackageName = packageName
+        _currentForegroundPackage.value = packageName
+
+        // Notify ProtectionCoordinator to enforce cooldown if user returns to offending app
+        com.moh.sh.app.shade.protection.ProtectionCoordinator.onForegroundPackageChanged(packageName)
+
         if (packageName !in autoStartApps.value) return
 
         if (OverlayManager.isServiceStartingInProgress) return
@@ -94,6 +100,7 @@ class ShadeAccessibilityService : AccessibilityService() {
 
     override fun onDestroy() {
         Log.d(TAG, "Accessibility service destroyed")
+        instanceRef = null
         OverlayManager.unregisterOverlayView()
         OverlayManager.onAccessibilityServiceDisconnected()
         destroyOverlay()
@@ -147,5 +154,19 @@ class ShadeAccessibilityService : AccessibilityService() {
 
     companion object {
         private const val TAG = "ShadeAccessibilityService"
+        private var instanceRef: java.lang.ref.WeakReference<ShadeAccessibilityService>? = null
+
+        private val _currentForegroundPackage = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+        val currentForegroundPackage: kotlinx.coroutines.flow.StateFlow<String?> = _currentForegroundPackage
+
+        fun navigateHome(): Boolean {
+            return instanceRef?.get()?.performGlobalAction(GLOBAL_ACTION_HOME) ?: false
+        }
+
+        fun navigateBack(): Boolean {
+            return instanceRef?.get()?.performGlobalAction(GLOBAL_ACTION_BACK) ?: false
+        }
+
+        val isServiceRunning: Boolean get() = instanceRef?.get() != null
     }
 }

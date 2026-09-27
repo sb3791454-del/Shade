@@ -51,4 +51,8 @@ object OverlayManager {
         pixelationLevel = level
         accessibilityOverlayView?.get()?.setPixelationLevel(level)
     }
+
+    fun setEmergencyShield(enabled: Boolean) {
+        accessibilityOverlayView?.get()?.setEmergencyShield(enabled)
+    }
 }

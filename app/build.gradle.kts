@@ -19,10 +19,19 @@ android {
 
         ndk {
             abiFilters.clear()
-            abiFilters += setOf("armeabi-v7a", "arm64-v8a")
+            abiFilters += setOf("armeabi-v7a", "arm64-v8a", "x86_64")
         }
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        create("debugConfig") {
+            storeFile = file("${rootDir}/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
     }
 
     buildTypes {
@@ -35,6 +44,7 @@ android {
             )
         }
         debug {
+            signingConfig = signingConfigs.getByName("debugConfig")
             applicationIdSuffix = ".debug"
             resValue("string", "app_name", "Shade Debug")
         }

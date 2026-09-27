@@ -77,6 +77,10 @@ class ScreenCaptureService : Service() {
     private var fullScreenModeEnabled: Boolean = false
     private var performanceModeEnabled: Boolean = false
     private var detailedModeEnabled: Boolean = false
+    private var cooldownMinutes: Int = 10
+    private var autoRedirectHome: Boolean = true
+    private var temporalConfirmationEnabled: Boolean = true
+    private var consecutiveBlackFrames = 0
     private var confidenceUpdatesJob: Job? = null
 
     private var backgroundThread: HandlerThread? = null
@@ -118,6 +122,9 @@ class ScreenCaptureService : Service() {
                     fullScreenModeEnabled = preferenceManager.isFullScreenModeEnabled()
                     detailedModeEnabled = preferenceManager.isDetailedModeEnabled()
                     performanceModeEnabled = preferenceManager.isPerformanceModeEnabled()
+                    cooldownMinutes = preferenceManager.getCooldownMinutes()
+                    autoRedirectHome = preferenceManager.isAutoRedirectHomeEnabled()
+                    temporalConfirmationEnabled = preferenceManager.isTemporalConfirmationEnabled()
                     val pixelationLevel = preferenceManager.getPixelationLevel()
 
                     withContext(Dispatchers.Main) {
@@ -188,6 +195,24 @@ class ScreenCaptureService : Service() {
                                         OverlayManager.setPixelationLevel(level)
                                     }
                                 }
+                        }
+
+                        launch {
+                            preferenceManager.cooldownMinutesFlow.collectLatest { minutes ->
+                                cooldownMinutes = minutes
+                            }
+                        }
+
+                        launch {
+                            preferenceManager.autoRedirectHomeFlow.collectLatest { enabled ->
+                                autoRedirectHome = enabled
+                            }
+                        }
+
+                        launch {
+                            preferenceManager.temporalConfirmationFlow.collectLatest { enabled ->
+                                temporalConfirmationEnabled = enabled
+                            }
                         }
                     }
 
@@ -430,6 +455,8 @@ class ScreenCaptureService : Service() {
                     inputCanvas.drawBitmap(bufferBitmap, 0f, 0f, null)
                 }
 
+                checkBlankSurface(inputBitmap)
+
                 serviceScope.launch {
                     try {
                         synchronized(detectorLock) {
@@ -485,6 +512,14 @@ class ScreenCaptureService : Service() {
                     onBoxesDetected = if (!segmentationMode) {
                         { boundingBoxes, sourceBitmap ->
                             if (isTargetAppVisible) {
+                                val maxConf = boundingBoxes.maxOfOrNull { it.confidence } ?: confidenceThreshold
+                                com.moh.sh.app.shade.protection.ProtectionCoordinator.onExplicitFrameDetected(
+                                    context = this@ScreenCaptureService,
+                                    confidence = maxConf,
+                                    useTemporalConfirmation = temporalConfirmationEnabled,
+                                    cooldownMinutes = cooldownMinutes,
+                                    autoRedirectHome = autoRedirectHome
+                                )
                                 val boxesToShow = if (fullScreenModeEnabled) {
                                     frameSimilarityChecker.onDetectionSuccess(
                                         sourceBitmap,
@@ -503,6 +538,14 @@ class ScreenCaptureService : Service() {
                     onSegmentationResult = if (segmentationMode) {
                         { segmentations, sourceBitmap ->
                             if (isTargetAppVisible) {
+                                val maxConf = segmentations.maxOfOrNull { it.box.confidence } ?: confidenceThreshold
+                                com.moh.sh.app.shade.protection.ProtectionCoordinator.onExplicitFrameDetected(
+                                    context = this@ScreenCaptureService,
+                                    confidence = maxConf,
+                                    useTemporalConfirmation = temporalConfirmationEnabled,
+                                    cooldownMinutes = cooldownMinutes,
+                                    autoRedirectHome = autoRedirectHome
+                                )
                                 val segmentationsToShow = if (fullScreenModeEnabled) {
                                     val mergedBoxes = frameSimilarityChecker.onDetectionSuccess(
                                         sourceBitmap,
@@ -695,10 +738,46 @@ class ScreenCaptureService : Service() {
         bufferBitmap.recycle()
         inputBitmap?.recycle()
         inputBitmap = null
+        consecutiveBlackFrames = 0
+        _isSurfaceRestrictedFlow.value = false
 
         Log.d(TAG, "Screen capture stopped")
     }
 
+    private fun checkBlankSurface(bitmap: Bitmap) {
+        val w = bitmap.width
+        val h = bitmap.height
+        if (w <= 10 || h <= 10) return
+        var hasNonBlackPixel = false
+        val stepX = w / 5
+        val stepY = h / 5
+        for (i in 1..4) {
+            for (j in 1..4) {
+                val pixel = bitmap.getPixel(i * stepX, j * stepY)
+                val rgb = pixel and 0x00FFFFFF
+                if (rgb != 0) {
+                    hasNonBlackPixel = true
+                    break
+                }
+            }
+            if (hasNonBlackPixel) break
+        }
+
+        if (!hasNonBlackPixel) {
+            consecutiveBlackFrames++
+            if (consecutiveBlackFrames >= 6) {
+                if (!_isSurfaceRestrictedFlow.value) {
+                    _isSurfaceRestrictedFlow.value = true
+                    Log.w(TAG, "Screen surface restricted: black frame detected (FLAG_SECURE or DRM window)")
+                }
+            }
+        } else {
+            consecutiveBlackFrames = 0
+            if (_isSurfaceRestrictedFlow.value) {
+                _isSurfaceRestrictedFlow.value = false
+            }
+        }
+    }
 
     companion object {
         private const val TAG = "ScreenCaptureService"
@@ -716,6 +795,9 @@ class ScreenCaptureService : Service() {
 
         private val _captureStateFlow = MutableStateFlow(CaptureState.IDLE)
         val captureStateFlow: StateFlow<CaptureState> = _captureStateFlow.asStateFlow()
+
+        private val _isSurfaceRestrictedFlow = MutableStateFlow(false)
+        val isSurfaceRestrictedFlow: StateFlow<Boolean> = _isSurfaceRestrictedFlow.asStateFlow()
 
         val isIdle: Boolean get() = _captureStateFlow.value == CaptureState.IDLE
     }

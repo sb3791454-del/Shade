@@ -7,6 +7,9 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
+import android.app.admin.DevicePolicyManager
+import android.net.Uri
 import android.provider.Settings
 import android.view.accessibility.AccessibilityManager
 import android.widget.Toast
@@ -47,8 +50,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.moh.sh.app.shade.R
+import com.moh.sh.app.shade.presentation.components.AntiBypassCard
 import com.moh.sh.app.shade.presentation.components.AutoStartAppsCard
 import com.moh.sh.app.shade.presentation.components.CaptureStatusCard
+import com.moh.sh.app.shade.presentation.components.CooldownTimerCard
+import com.moh.sh.app.shade.presentation.components.CoverageDialog
 import com.moh.sh.app.shade.presentation.components.DetectionConfidenceCard
 import com.moh.sh.app.shade.presentation.components.GitHubFooter
 import com.moh.sh.app.shade.presentation.components.ModelLoadingDialog
@@ -60,6 +66,7 @@ import com.moh.sh.app.shade.presentation.components.SettingsSectionHeader
 import com.moh.sh.app.shade.presentation.components.SettingsToggleCard
 import com.moh.sh.app.shade.presentation.components.UnsupportedBanner
 import com.moh.sh.app.shade.presentation.components.UnsupportedDialog
+import com.moh.sh.app.shade.receiver.ShadeDeviceAdminReceiver
 import com.moh.sh.app.shade.service.CaptureState
 import com.moh.sh.app.shade.service.ShadeAccessibilityService
 import com.moh.sh.app.shade.presentation.theme.ShadeTheme
@@ -144,7 +151,15 @@ class MainActivity : ComponentActivity() {
                         onContinueSingleAppCaptureTipDialog = {
                             viewModel.acknowledgeSingleAppCaptureTip()
                             startScreenCapture()
-                        }
+                        },
+                        onCooldownMinutesChanged = { mins -> viewModel.updateCooldownMinutes(mins) },
+                        onAutoRedirectHomeChanged = { enabled -> viewModel.updateAutoRedirectHome(enabled) },
+                        onTemporalConfirmationChanged = { enabled -> viewModel.updateTemporalConfirmation(enabled) },
+                        onResetCooldown = { viewModel.resetCooldown() },
+                        onViewCoverageDetails = { viewModel.toggleCoverageDialog(true) },
+                        onDismissCoverageDialog = { viewModel.toggleCoverageDialog(false) },
+                        onRequestDeviceAdmin = { requestDeviceAdmin() },
+                        onRequestIgnoreBatteryOptimization = { requestIgnoreBatteryOptimization() }
                     )
                 }
             }
@@ -154,6 +169,40 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         updatePermissionStates()
+        viewModel.updateDeviceAdminState(isDeviceAdminActive())
+        viewModel.updateBatteryOptimizationState(isBatteryOptimizationIgnored())
+    }
+
+    private fun isDeviceAdminActive(): Boolean {
+        val dpm = getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        val adminComponent = ComponentName(this, ShadeDeviceAdminReceiver::class.java)
+        return dpm.isAdminActive(adminComponent)
+    }
+
+    private fun requestDeviceAdmin() {
+        val adminComponent = ComponentName(this, ShadeDeviceAdminReceiver::class.java)
+        val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
+            putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponent)
+            putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, getString(R.string.device_admin_description))
+        }
+        startActivity(intent)
+    }
+
+    private fun isBatteryOptimizationIgnored(): Boolean {
+        val powerManager = getSystemService(POWER_SERVICE) as PowerManager
+        return powerManager.isIgnoringBatteryOptimizations(packageName)
+    }
+
+    private fun requestIgnoreBatteryOptimization() {
+        try {
+            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                data = Uri.parse("package:$packageName")
+            }
+            startActivity(intent)
+        } catch (_: Exception) {
+            val fallback = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+            startActivity(fallback)
+        }
     }
 
     private fun updatePermissionStates() {
@@ -222,7 +271,15 @@ fun MainScreen(
     onDismissAppSelectionDialog: () -> Unit,
     onDismissUnsupportedDialog: () -> Unit,
     onDismissSingleAppCaptureTipDialog: () -> Unit,
-    onContinueSingleAppCaptureTipDialog: () -> Unit
+    onContinueSingleAppCaptureTipDialog: () -> Unit,
+    onCooldownMinutesChanged: (Int) -> Unit,
+    onAutoRedirectHomeChanged: (Boolean) -> Unit,
+    onTemporalConfirmationChanged: (Boolean) -> Unit,
+    onResetCooldown: () -> Unit,
+    onViewCoverageDetails: () -> Unit,
+    onDismissCoverageDialog: () -> Unit,
+    onRequestDeviceAdmin: () -> Unit,
+    onRequestIgnoreBatteryOptimization: () -> Unit
 ) {
     if (uiState.showUnsupportedDeviceDialog) {
         UnsupportedDialog(onDismiss = onDismissUnsupportedDialog)
@@ -233,6 +290,10 @@ fun MainScreen(
             onDismiss = onDismissSingleAppCaptureTipDialog,
             onContinue = onContinueSingleAppCaptureTipDialog
         )
+    }
+
+    if (uiState.showCoverageDialog) {
+        CoverageDialog(onDismiss = onDismissCoverageDialog)
     }
 
     if (uiState.captureState == CaptureState.INITIALIZING) {
@@ -291,12 +352,34 @@ fun MainScreen(
 
             CaptureStatusCard(
                 captureState = uiState.captureState,
+                isSurfaceRestricted = uiState.isSurfaceRestricted,
+                isCooldownActive = uiState.isCooldownActive,
+                cooldownRemainingSeconds = uiState.cooldownRemainingSeconds,
                 onStartCapture = onStartCapture,
-                onStopCapture = onStopCapture
+                onStopCapture = onStopCapture,
+                onViewCoverageDetails = onViewCoverageDetails
             )
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            // Anti-Porn Protection Section
+            SettingsSectionHeader(stringResource(R.string.settings_section_protection))
+
+            CooldownTimerCard(
+                cooldownMinutes = uiState.cooldownMinutes,
+                isCooldownActive = uiState.isCooldownActive,
+                cooldownRemainingSeconds = uiState.cooldownRemainingSeconds,
+                autoRedirectHome = uiState.autoRedirectHome,
+                temporalConfirmationEnabled = uiState.temporalConfirmationEnabled,
+                onCooldownMinutesChanged = onCooldownMinutesChanged,
+                onAutoRedirectHomeChanged = onAutoRedirectHomeChanged,
+                onTemporalConfirmationChanged = onTemporalConfirmationChanged,
+                onResetCooldown = onResetCooldown
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Detection Settings Section
             SettingsSectionHeader(stringResource(R.string.settings_section_detection))
 
             DetectionConfidenceCard(
@@ -316,6 +399,19 @@ fun MainScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            // Anti-Bypass & Persistence Section
+            SettingsSectionHeader(stringResource(R.string.settings_section_anti_bypass))
+
+            AntiBypassCard(
+                isDeviceAdminActive = uiState.isDeviceAdminActive,
+                isBatteryOptimizationIgnored = uiState.isBatteryOptimizationIgnored,
+                onRequestDeviceAdmin = onRequestDeviceAdmin,
+                onRequestIgnoreBatteryOptimization = onRequestIgnoreBatteryOptimization
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Advanced Section
             SettingsSectionHeader(stringResource(R.string.settings_section_advanced))
 
             SettingsToggleCard(

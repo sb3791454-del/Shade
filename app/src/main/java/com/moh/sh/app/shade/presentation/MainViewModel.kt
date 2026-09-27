@@ -30,7 +30,16 @@ data class MainUiState(
     val shouldShowSingleAppCaptureTipOnStart: Boolean = false,
     val showSingleAppCaptureTipDialog: Boolean = false,
     val autoStartApps: Set<String> = emptySet(),
-    val showAppSelectionDialog: Boolean = false
+    val showAppSelectionDialog: Boolean = false,
+    val cooldownMinutes: Int = 10,
+    val autoRedirectHome: Boolean = true,
+    val temporalConfirmationEnabled: Boolean = true,
+    val cooldownRemainingSeconds: Int = 0,
+    val isCooldownActive: Boolean = false,
+    val isSurfaceRestricted: Boolean = false,
+    val isDeviceAdminActive: Boolean = false,
+    val isBatteryOptimizationIgnored: Boolean = false,
+    val showCoverageDialog: Boolean = false
 )
 
 @KoinViewModel
@@ -107,6 +116,42 @@ class MainViewModel(
         viewModelScope.launch {
             ScreenCaptureService.captureStateFlow.collectLatest { captureState ->
                 _uiState.update { state -> state.copy(captureState = captureState) }
+            }
+        }
+
+        viewModelScope.launch {
+            ScreenCaptureService.isSurfaceRestrictedFlow.collectLatest { isRestricted ->
+                _uiState.update { state -> state.copy(isSurfaceRestricted = isRestricted) }
+            }
+        }
+
+        viewModelScope.launch {
+            com.moh.sh.app.shade.protection.ProtectionCoordinator.cooldownRemainingSeconds.collectLatest { remaining ->
+                _uiState.update { state -> state.copy(cooldownRemainingSeconds = remaining) }
+            }
+        }
+
+        viewModelScope.launch {
+            com.moh.sh.app.shade.protection.ProtectionCoordinator.isCooldownActive.collectLatest { active ->
+                _uiState.update { state -> state.copy(isCooldownActive = active) }
+            }
+        }
+
+        viewModelScope.launch {
+            preferenceManager.cooldownMinutesFlow.collectLatest { minutes ->
+                _uiState.update { state -> state.copy(cooldownMinutes = minutes) }
+            }
+        }
+
+        viewModelScope.launch {
+            preferenceManager.autoRedirectHomeFlow.collectLatest { enabled ->
+                _uiState.update { state -> state.copy(autoRedirectHome = enabled) }
+            }
+        }
+
+        viewModelScope.launch {
+            preferenceManager.temporalConfirmationFlow.collectLatest { enabled ->
+                _uiState.update { state -> state.copy(temporalConfirmationEnabled = enabled) }
             }
         }
     }
@@ -205,6 +250,43 @@ class MainViewModel(
         viewModelScope.launch {
             preferenceManager.setDetailedMode(enabled)
         }
+    }
+
+    fun updateCooldownMinutes(minutes: Int) {
+        _uiState.update { it.copy(cooldownMinutes = minutes) }
+        viewModelScope.launch {
+            preferenceManager.setCooldownMinutes(minutes)
+        }
+    }
+
+    fun updateAutoRedirectHome(enabled: Boolean) {
+        _uiState.update { it.copy(autoRedirectHome = enabled) }
+        viewModelScope.launch {
+            preferenceManager.setAutoRedirectHome(enabled)
+        }
+    }
+
+    fun updateTemporalConfirmation(enabled: Boolean) {
+        _uiState.update { it.copy(temporalConfirmationEnabled = enabled) }
+        viewModelScope.launch {
+            preferenceManager.setTemporalConfirmation(enabled)
+        }
+    }
+
+    fun resetCooldown() {
+        com.moh.sh.app.shade.protection.ProtectionCoordinator.resetCooldown()
+    }
+
+    fun toggleCoverageDialog(show: Boolean) {
+        _uiState.update { it.copy(showCoverageDialog = show) }
+    }
+
+    fun updateDeviceAdminState(active: Boolean) {
+        _uiState.update { it.copy(isDeviceAdminActive = active) }
+    }
+
+    fun updateBatteryOptimizationState(ignored: Boolean) {
+        _uiState.update { it.copy(isBatteryOptimizationIgnored = ignored) }
     }
 
     private fun isSingleAppRecordingSupported(): Boolean {

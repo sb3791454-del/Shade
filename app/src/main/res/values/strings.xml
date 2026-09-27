@@ -85,4 +85,58 @@
     <string name="model_loading_first_time_detailed">Loading the detailed model</string>
     <string name="model_loading_first_time_large">Loading the precision model</string>
     <string name="model_loading_description">The first load for each model type can take a few minutes.\nStarting detection is usually much faster next times</string>
+
+    <!-- Anti-Porn Protection & Cooldown Strings -->
+    <string name="protection_status_on">PROTECTION ON</string>
+    <string name="protection_status_off">PROTECTION OFF</string>
+    <string name="status_ai_ready">AI Engine: Ready</string>
+    <string name="status_ai_initializing">AI Engine: Initializing</string>
+    <string name="status_ai_unavailable">AI Engine: Inactive</string>
+    <string name="status_monitoring_active">Monitoring: Active</string>
+    <string name="status_monitoring_inactive">Monitoring: Inactive</string>
+    <string name="status_surface_normal">Coverage: Normal</string>
+    <string name="status_surface_restricted">Coverage: Restricted (FLAG_SECURE/DRM)</string>
+    <string name="status_surface_restricted_desc">Android blocks capture on banking apps, DRM videos, and FLAG_SECURE windows. Detection is paused on those surfaces.</string>
+
+    <string name="cooldown_timer_title">Cooldown Timer</string>
+    <string name="cooldown_explanation">Timer = a small waiting period after the blocker catches something.\n\nFor example:\nIf the timer is 10 minutes, the app keeps protection active for 10 minutes before normal access is restored.\n\nIt is NOT a timer that decides whether something is porn.\nThe AI decides that.\nThe timer only controls what happens AFTER a detection.</string>
+    <string name="cooldown_active_banner">⏱ Cooldown Active: %1$s remaining</string>
+    <string name="cooldown_duration">Cooldown Duration</string>
+    <string name="cooldown_duration_format">%1$d minutes</string>
+    <string name="settings_section_protection">Anti-Porn Protection</string>
+    <string name="settings_section_anti_bypass">Anti-Bypass &amp; Persistence</string>
+    <string name="auto_redirect_home">Emergency Home Redirect</string>
+    <string name="auto_redirect_home_desc">Instantly returns to device Home screen upon detection to stop viewing immediately.</string>
+    <string name="temporal_confirmation">Multi-Frame Verification</string>
+    <string name="temporal_confirmation_desc">Verifies detection over multiple consecutive frames before triggering cooldown. Prevents false alarms on swimwear, fitness, and ordinary photos.</string>
+
+    <string name="device_admin_label">Shade Protection Admin</string>
+    <string name="device_admin_description">Prevents casual tampering and uninstallation while personal anti-porn protection is enabled.</string>
+    <string name="device_admin_title">Device Administrator</string>
+    <string name="device_admin_desc">Prevents casual or impulsive uninstallation of Shade in Android Settings.</string>
+    <string name="device_admin_status_active">Active (Protected against casual uninstall)</string>
+    <string name="device_admin_status_inactive">Inactive (Tap to configure)</string>
+    <string name="device_admin_enable_action">Enable Device Admin</string>
+    <string name="device_admin_enabled_toast">Device Admin enabled for Shade anti-porn protection.</string>
+    <string name="device_admin_disabled_toast">Device Admin deactivated.</string>
+    <string name="device_admin_disable_warning">Deactivating Device Admin lowers your anti-porn protection and allows the app to be uninstalled.</string>
+
+    <string name="battery_optimization_title">Battery Optimization</string>
+    <string name="battery_optimization_desc">Disable battery restrictions so background system cleaners do not kill screen monitoring.</string>
+    <string name="battery_unrestricted">Unrestricted (Recommended)</string>
+    <string name="battery_restricted">Optimized (May be stopped by system)</string>
+    <string name="battery_optimize_action">Request Unrestricted</string>
+
+    <string name="reboot_notification_title">Shade Protection Resumed</string>
+    <string name="reboot_notification_desc">Device restarted. Tap to re-activate screen capture protection.</string>
+    <string name="notification_channel_persistence">Protection Persistence</string>
+    <string name="notification_channel_persistence_desc">Alerts when protection needs re-activation after reboot</string>
+    <string name="explicit_content_blocked_warning">Explicit content detected &amp; blocked! %1$d min cooldown active.</string>
+
+    <string name="coverage_info_title">Screen Coverage &amp; Android Boundaries</string>
+    <string name="coverage_info_summary">What Shade can and cannot inspect</string>
+    <string name="coverage_info_content">WHAT IS PROTECTED:\n• Chrome, Edge, Firefox, Opera, Brave\n• YouTube, Twitter/X, Reddit, TikTok, Instagram\n• Webviews and streaming applications\n• Full-screen media where capture is permitted\n\nANDROID SYSTEM RESTRICTIONS:\n• FLAG_SECURE: Banking apps and secure windows prohibit capture (returns pitch black frames).\n• DRM Media: Protected video (Netflix, Disney+) returns black frames to protect copyright.\n• MediaProjection: Android 14+ requires explicit user consent per session and displays a system privacy indicator.\n• Background Capture: Android security requires a visible foreground notification while recording.</string>
+    <string name="view_coverage_details">View System Coverage &amp; Limits</string>
+    <string name="protection_events_title">Recent Protection Events</string>
+    <string name="no_events_yet">No explicit content detections recorded. Screen is clean!</string>
 </resources>

@@ -52,7 +52,19 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
         isAntiAlias = false
         isFilterBitmap = false
     }
+    private val shieldPaint = Paint().apply {
+        color = android.graphics.Color.BLACK
+        style = Paint.Style.FILL
+    }
     private var opacity: Int = 255
+    private var isEmergencyShieldActive: Boolean = false
+
+    fun setEmergencyShield(enabled: Boolean) {
+        if (isEmergencyShieldActive != enabled) {
+            isEmergencyShieldActive = enabled
+            invalidate()
+        }
+    }
 
     fun setOpacity(opacityPercent: Float) {
         val percent = opacityPercent.coerceIn(0f, 100f)
@@ -89,6 +101,11 @@ class OverlayView(context: Context?, attrs: AttributeSet?) : View(context, attrs
 
     override fun draw(canvas: Canvas) {
         super.draw(canvas)
+
+        if (isEmergencyShieldActive) {
+            canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), shieldPaint)
+            return
+        }
 
         currentRegions.forEach { region ->
             if (!region.bitmap.isRecycled) {

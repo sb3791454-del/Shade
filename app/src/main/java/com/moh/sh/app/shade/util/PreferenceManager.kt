@@ -36,7 +36,25 @@ class PreferenceManager(private val context: Context) {
         private val AUTO_START_APPS = stringSetPreferencesKey("auto_start_apps")
         private val PIXELATION_LEVEL = intPreferencesKey("pixelation_level")
         private val DETAILED_MODE = booleanPreferencesKey("detailed_mode_enabled")
+        private val COOLDOWN_MINUTES = intPreferencesKey("cooldown_minutes")
+        private val AUTO_REDIRECT_HOME = booleanPreferencesKey("auto_redirect_home")
+        private val TEMPORAL_CONFIRMATION = booleanPreferencesKey("temporal_confirmation")
     }
+
+    val cooldownMinutesFlow: Flow<Int> = data
+        .map { preferences ->
+            preferences[COOLDOWN_MINUTES] ?: DEFAULT_COOLDOWN_MINUTES
+        }
+
+    val autoRedirectHomeFlow: Flow<Boolean> = data
+        .map { preferences ->
+            preferences[AUTO_REDIRECT_HOME] ?: true
+        }
+
+    val temporalConfirmationFlow: Flow<Boolean> = data
+        .map { preferences ->
+            preferences[TEMPORAL_CONFIRMATION] ?: true
+        }
 
     val confidencePercentFlow: Flow<Float> = data
         .map { preferences ->
@@ -189,4 +207,43 @@ class PreferenceManager(private val context: Context) {
             preferences[DETAILED_MODE] = enabled
         }
     }
+
+    suspend fun getCooldownMinutes(): Int {
+        return context.dataStore.data
+            .map { preferences -> preferences[COOLDOWN_MINUTES] ?: DEFAULT_COOLDOWN_MINUTES }
+            .first()
+    }
+
+    suspend fun setCooldownMinutes(minutes: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[COOLDOWN_MINUTES] = minutes.coerceIn(1, 60)
+        }
+    }
+
+    suspend fun isAutoRedirectHomeEnabled(): Boolean {
+        return context.dataStore.data
+            .map { preferences -> preferences[AUTO_REDIRECT_HOME] ?: true }
+            .first()
+    }
+
+    suspend fun setAutoRedirectHome(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[AUTO_REDIRECT_HOME] = enabled
+        }
+    }
+
+    suspend fun isTemporalConfirmationEnabled(): Boolean {
+        return context.dataStore.data
+            .map { preferences -> preferences[TEMPORAL_CONFIRMATION] ?: true }
+            .first()
+    }
+
+    suspend fun setTemporalConfirmation(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[TEMPORAL_CONFIRMATION] = enabled
+        }
+    }
 }
+
+const val DEFAULT_COOLDOWN_MINUTES = 10
+

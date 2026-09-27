@@ -1,0 +1,8 @@
+{
+  "name": "Shade",
+  "description": "On-device screen capture content detector and privacy overlay with customizable detection models and pixelation levels.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
