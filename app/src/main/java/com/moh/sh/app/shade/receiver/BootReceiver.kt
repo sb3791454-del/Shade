@@ -15,6 +15,12 @@ class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
         val action = intent?.action ?: return
         if (action == Intent.ACTION_BOOT_COMPLETED || action == Intent.ACTION_MY_PACKAGE_REPLACED) {
+            // Re-enforce Device Owner policies upon boot
+            com.moh.sh.app.shade.security.ProtectionPolicyManager.enforceDeviceOwnerPolicies(context)
+
+            // Re-verify recovery state integrity and handle fail-safe maintenance relock
+            com.moh.sh.app.shade.security.TrustedRecoveryManager.initialize(context)
+
             val notificationManager =
                 context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 

@@ -61,12 +61,16 @@ import com.moh.sh.app.shade.presentation.components.ModelLoadingDialog
 import com.moh.sh.app.shade.presentation.components.OverlayOpacityCard
 import com.moh.sh.app.shade.presentation.components.PixelationLevelCard
 import com.moh.sh.app.shade.presentation.components.PreviewDialog
+import com.moh.sh.app.shade.presentation.components.ProtectionLevelCard
 import com.moh.sh.app.shade.presentation.components.SingleAppCaptureTipDialog
 import com.moh.sh.app.shade.presentation.components.SettingsSectionHeader
 import com.moh.sh.app.shade.presentation.components.SettingsToggleCard
 import com.moh.sh.app.shade.presentation.components.UnsupportedBanner
 import com.moh.sh.app.shade.presentation.components.UnsupportedDialog
 import com.moh.sh.app.shade.receiver.ShadeDeviceAdminReceiver
+import com.moh.sh.app.shade.security.ProtectionLevel
+import com.moh.sh.app.shade.security.ProtectionPolicyManager
+import com.moh.sh.app.shade.security.TrustedRecoveryManager
 import com.moh.sh.app.shade.service.CaptureState
 import com.moh.sh.app.shade.service.ShadeAccessibilityService
 import com.moh.sh.app.shade.presentation.theme.ShadeTheme
@@ -103,6 +107,7 @@ class MainActivity : ComponentActivity() {
         )
 
         updatePermissionStates()
+        TrustedRecoveryManager.initialize(applicationContext)
 
         setContent {
             val uiState by viewModel.uiState.collectAsState()
@@ -159,7 +164,19 @@ class MainActivity : ComponentActivity() {
                         onViewCoverageDetails = { viewModel.toggleCoverageDialog(true) },
                         onDismissCoverageDialog = { viewModel.toggleCoverageDialog(false) },
                         onRequestDeviceAdmin = { requestDeviceAdmin() },
-                        onRequestIgnoreBatteryOptimization = { requestIgnoreBatteryOptimization() }
+                        onRequestIgnoreBatteryOptimization = { requestIgnoreBatteryOptimization() },
+                        onSetupRecoveryCredential = { cred, hours, isFriend ->
+                            viewModel.setupRecoveryCredential(applicationContext, cred, hours, isFriend)
+                        },
+                        onVerifyAndRequestUnlock = { cred ->
+                            viewModel.verifyAndRequestUnlock(applicationContext, cred)
+                        },
+                        onCancelUnlockRequest = {
+                            viewModel.cancelUnlockRequest(applicationContext)
+                        },
+                        onRelockImmediately = {
+                            viewModel.relockImmediately(applicationContext)
+                        }
                     )
                 }
             }
@@ -169,6 +186,11 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         updatePermissionStates()
+        val level = ProtectionPolicyManager.getProtectionLevel(this)
+        viewModel.updateProtectionLevel(level)
+        if (level == ProtectionLevel.DEVICE_OWNER) {
+            ProtectionPolicyManager.enforceDeviceOwnerPolicies(this)
+        }
         viewModel.updateDeviceAdminState(isDeviceAdminActive())
         viewModel.updateBatteryOptimizationState(isBatteryOptimizationIgnored())
     }
@@ -279,7 +301,11 @@ fun MainScreen(
     onViewCoverageDetails: () -> Unit,
     onDismissCoverageDialog: () -> Unit,
     onRequestDeviceAdmin: () -> Unit,
-    onRequestIgnoreBatteryOptimization: () -> Unit
+    onRequestIgnoreBatteryOptimization: () -> Unit,
+    onSetupRecoveryCredential: (credential: String, hours: Int, isFriend: Boolean) -> Unit,
+    onVerifyAndRequestUnlock: (credential: String) -> Unit,
+    onCancelUnlockRequest: () -> Unit,
+    onRelockImmediately: () -> Unit
 ) {
     if (uiState.showUnsupportedDeviceDialog) {
         UnsupportedDialog(onDismiss = onDismissUnsupportedDialog)
@@ -358,6 +384,24 @@ fun MainScreen(
                 onStartCapture = onStartCapture,
                 onStopCapture = onStopCapture,
                 onViewCoverageDetails = onViewCoverageDetails
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // System Protection Level & Trusted Recovery Section
+            ProtectionLevelCard(
+                protectionLevel = uiState.protectionLevel,
+                recoveryState = uiState.recoveryState,
+                coolingOffRemainingSeconds = uiState.recoveryCoolingOffRemainingSeconds,
+                maintenanceRemainingSeconds = uiState.recoveryMaintenanceRemainingSeconds,
+                isCredentialConfigured = uiState.isRecoveryCredentialConfigured,
+                configuredCoolingOffHours = uiState.configuredCoolingOffHours,
+                isFriendKeyMode = uiState.isFriendKeyMode,
+                onRequestDeviceAdmin = onRequestDeviceAdmin,
+                onSetupRecoveryCredential = onSetupRecoveryCredential,
+                onVerifyAndRequestUnlock = onVerifyAndRequestUnlock,
+                onCancelUnlockRequest = onCancelUnlockRequest,
+                onRelockImmediately = onRelockImmediately
             )
 
             Spacer(modifier = Modifier.height(12.dp))

@@ -139,4 +139,38 @@
     <string name="view_coverage_details">View System Coverage &amp; Limits</string>
     <string name="protection_events_title">Recent Protection Events</string>
     <string name="no_events_yet">No explicit content detections recorded. Screen is clean!</string>
+
+    <!-- Protection Levels & Trusted Recovery Strings -->
+    <string name="protection_level_title">System Protection Level</string>
+    <string name="protection_level_device_owner">Level 2 — Maximum (Device Owner)</string>
+    <string name="protection_level_device_owner_desc">Android Device Owner protection prevents normal user deactivation and uninstall. A trusted recovery procedure is required.</string>
+    <string name="protection_level_device_admin">Level 1 — Normal (Device Admin)</string>
+    <string name="protection_level_device_admin_desc">Device Admin is active. Protects against casual uninstall attempts, but can be deactivated by the user in Android Settings.</string>
+    <string name="protection_level_none">Unprotected</string>
+    <string name="protection_level_none_desc">Device management is inactive. Shade can be uninstalled without barriers.</string>
+    <string name="device_owner_provisioning_hint">To activate Level 2 Maximum Protection, provision Shade via ADB on a device without accounts:\nadb shell dpm set-device-owner com.moh.sh.app.shade/.receiver.ShadeDeviceAdminReceiver</string>
+    
+    <string name="recovery_title">Trusted Recovery &amp; Maintenance</string>
+    <string name="recovery_setup_btn">Configure Trusted Recovery</string>
+    <string name="recovery_request_unlock_btn">Request Maintenance Unlock</string>
+    <string name="recovery_cancel_btn">Cancel Unlock Request</string>
+    <string name="recovery_relock_btn">Relock Now</string>
+    <string name="recovery_state_locked">Protected (Locked)</string>
+    <string name="recovery_state_cooling_off">Cooling-Off Active: %1$s remaining</string>
+    <string name="recovery_state_cooling_off_desc">Full AI protection remains active. Legitimate maintenance becomes available when the cooling-off period finishes.</string>
+    <string name="recovery_state_maintenance">Maintenance Mode: %1$s remaining</string>
+    <string name="recovery_state_maintenance_desc">Device Owner remains active and uninstall is blocked. Internal settings may be adjusted temporarily.</string>
+    
+    <string name="setup_recovery_title">Configure Trusted Recovery</string>
+    <string name="setup_recovery_desc">Set a recovery PIN or Trusted Friend key and choose a cooling-off waiting period to prevent impulsive changes.</string>
+    <string name="cooling_off_delay_label">Cooling-Off Waiting Period</string>
+    <string name="friend_key_option">Use Trusted Friend Key</string>
+    <string name="friend_key_desc">A randomized key is generated. Share it with an accountability partner or trusted friend so you cannot unlock alone.</string>
+    <string name="friend_key_generated">Your Trusted Friend Key:</string>
+    <string name="friend_key_copy_hint">Copy and send this key to your trusted partner. It cannot be recovered once closed.</string>
+    <string name="enter_credential_hint">Enter Recovery PIN or Friend Key</string>
+    <string name="unlock_request_title">Request Maintenance Unlock</string>
+    <string name="unlock_request_desc">Enter your recovery credential. A %1$d-hour cooling-off waiting period will begin before maintenance mode opens. AI protection remains 100% active during the waiting period.</string>
+    <string name="invalid_credential_error">Invalid credential. Please try again.</string>
+    <string name="cancel_unlock_confirm">Cancel the unlock request and keep the system locked?</string>
 </resources>

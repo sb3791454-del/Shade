@@ -39,7 +39,14 @@ data class MainUiState(
     val isSurfaceRestricted: Boolean = false,
     val isDeviceAdminActive: Boolean = false,
     val isBatteryOptimizationIgnored: Boolean = false,
-    val showCoverageDialog: Boolean = false
+    val showCoverageDialog: Boolean = false,
+    val protectionLevel: com.moh.sh.app.shade.security.ProtectionLevel = com.moh.sh.app.shade.security.ProtectionLevel.NONE,
+    val recoveryState: com.moh.sh.app.shade.security.RecoveryState = com.moh.sh.app.shade.security.RecoveryState.LOCKED,
+    val recoveryCoolingOffRemainingSeconds: Long = 0L,
+    val recoveryMaintenanceRemainingSeconds: Long = 0L,
+    val isRecoveryCredentialConfigured: Boolean = false,
+    val configuredCoolingOffHours: Int = 24,
+    val isFriendKeyMode: Boolean = false
 )
 
 @KoinViewModel
@@ -152,6 +159,42 @@ class MainViewModel(
         viewModelScope.launch {
             preferenceManager.temporalConfirmationFlow.collectLatest { enabled ->
                 _uiState.update { state -> state.copy(temporalConfirmationEnabled = enabled) }
+            }
+        }
+
+        viewModelScope.launch {
+            com.moh.sh.app.shade.security.TrustedRecoveryManager.recoveryState.collectLatest { state ->
+                _uiState.update { it.copy(recoveryState = state) }
+            }
+        }
+
+        viewModelScope.launch {
+            com.moh.sh.app.shade.security.TrustedRecoveryManager.coolingOffRemainingSeconds.collectLatest { sec ->
+                _uiState.update { it.copy(recoveryCoolingOffRemainingSeconds = sec) }
+            }
+        }
+
+        viewModelScope.launch {
+            com.moh.sh.app.shade.security.TrustedRecoveryManager.maintenanceRemainingSeconds.collectLatest { sec ->
+                _uiState.update { it.copy(recoveryMaintenanceRemainingSeconds = sec) }
+            }
+        }
+
+        viewModelScope.launch {
+            com.moh.sh.app.shade.security.TrustedRecoveryManager.isCredentialConfigured.collectLatest { configured ->
+                _uiState.update { it.copy(isRecoveryCredentialConfigured = configured) }
+            }
+        }
+
+        viewModelScope.launch {
+            com.moh.sh.app.shade.security.TrustedRecoveryManager.configuredCoolingOffHours.collectLatest { hrs ->
+                _uiState.update { it.copy(configuredCoolingOffHours = hrs) }
+            }
+        }
+
+        viewModelScope.launch {
+            com.moh.sh.app.shade.security.TrustedRecoveryManager.isFriendKeyMode.collectLatest { isFriend ->
+                _uiState.update { it.copy(isFriendKeyMode = isFriend) }
             }
         }
     }
@@ -287,6 +330,42 @@ class MainViewModel(
 
     fun updateBatteryOptimizationState(ignored: Boolean) {
         _uiState.update { it.copy(isBatteryOptimizationIgnored = ignored) }
+    }
+
+    fun updateProtectionLevel(level: com.moh.sh.app.shade.security.ProtectionLevel) {
+        _uiState.update { it.copy(protectionLevel = level) }
+    }
+
+    fun setupRecoveryCredential(context: android.content.Context, credential: String, hours: Int, isFriend: Boolean) {
+        viewModelScope.launch {
+            com.moh.sh.app.shade.security.TrustedRecoveryManager.setupCredential(
+                context = context,
+                credential = credential.toCharArray(),
+                coolingOffHours = hours,
+                isFriendKey = isFriend
+            )
+        }
+    }
+
+    fun verifyAndRequestUnlock(context: android.content.Context, credential: String) {
+        viewModelScope.launch {
+            com.moh.sh.app.shade.security.TrustedRecoveryManager.verifyAndRequestUnlock(
+                context = context,
+                credential = credential.toCharArray()
+            )
+        }
+    }
+
+    fun cancelUnlockRequest(context: android.content.Context) {
+        viewModelScope.launch {
+            com.moh.sh.app.shade.security.TrustedRecoveryManager.cancelUnlockRequest(context)
+        }
+    }
+
+    fun relockImmediately(context: android.content.Context) {
+        viewModelScope.launch {
+            com.moh.sh.app.shade.security.TrustedRecoveryManager.relockImmediately(context)
+        }
     }
 
     private fun isSingleAppRecordingSupported(): Boolean {
